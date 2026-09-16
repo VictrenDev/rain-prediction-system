@@ -5,10 +5,7 @@ type TopbarProps = {
   subtitle?: string;
 };
 
-export default function Topbar({
-  title = "Rain Prediction",
-  subtitle = "Environmental trends and conditions used to predict rainfall",
-}: TopbarProps) {
+export default function Topbar({ title = "Rain Prediction", subtitle = "Environmental trends and conditions used to predict rainfall" }: TopbarProps) {
   const toggleSidebar = () => {
     window.dispatchEvent(new Event("toggle-sidebar"));
   };
@@ -17,18 +14,12 @@ export default function Topbar({
     <header className="fixed top-0 left-0 lg:left-[260px] right-0 h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-xs">
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         {/* Hamburger, mobile only */}
-        <button
-          className="lg:hidden text-slate-600 hover:text-slate-900 shrink-0"
-          onClick={toggleSidebar}
-          aria-label="Open sidebar"
-        >
+        <button className="lg:hidden text-slate-600 hover:text-slate-900 shrink-0" onClick={toggleSidebar} aria-label="Open sidebar">
           <span className="material-symbols-outlined text-[24px]">menu</span>
         </button>
 
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight truncate">
-            {title}
-          </h1>
+          <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight truncate">{title}</h1>
           <p className="text-xs text-slate-500 hidden sm:block truncate">{subtitle}</p>
         </div>
 
@@ -44,9 +35,7 @@ export default function Topbar({
               <option>Node 1 (North Garden)</option>
               <option>Node 2 (South Valley)</option>
             </select>
-            <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1.5 text-slate-400 text-[16px]">
-              expand_more
-            </span>
+            <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1.5 text-slate-400 text-[16px]">expand_more</span>
           </div>
         </div>
       </div>
@@ -58,9 +47,7 @@ export default function Topbar({
             Updated: <strong className="text-slate-800 font-semibold">12:00 PM</strong>
           </span>
         </div>
-        <div className="w-8 h-8 rounded-lg bg-cyan-700 text-white flex items-center justify-center font-semibold text-xs shadow-xs">
-          JD
-        </div>
+        <div className="w-8 h-8 rounded-lg bg-cyan-700 text-white flex items-center justify-center font-semibold text-xs shadow-xs">JD</div>
       </div>
     </header>
   );
