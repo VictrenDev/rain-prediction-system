@@ -10,7 +10,6 @@ const navItems: NavItem[] = [
   { label: "Nodes & Sensors", href: "/nodes", icon: "hub" },
   { label: "Readings History", href: "/readings", icon: "table_chart" },
   { label: "Rain Prediction", href: "/prediction", icon: "rainy" },
-  { label: "Alerts & Thresholds", href: "/alerts", icon: "notifications_active" },
 ];
 
 export default function Sidebar() {

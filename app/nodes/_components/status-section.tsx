@@ -30,51 +30,59 @@ export default function StatusSection() {
           </span>
         }
       />
+
+      {/* REPLACED: Station Battery Health -> Mesh Signal Quality */}
       <StatCard
-        icon="battery_charging_full"
+        icon="signal_cellular_alt"
+        iconClassName="text-cyan-700"
+        title="Mesh Signal Quality"
+        badge={
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold whitespace-nowrap">
+            Strong
+          </span>
+        }
+        value={
+          <span className="text-3xl font-extrabold text-slate-900 tracking-tight">-64 dBm avg</span>
+        }
+        description={
+          <>
+            <span className="material-symbols-outlined text-[16px] text-emerald-600">wifi</span>
+            All 3 nodes within reliable range
+          </>
+        }
+        footer={
+          <span>
+            Weakest link: <strong className="text-amber-700 font-semibold">South Valley (-84 dBm)</strong>
+          </span>
+        }
+      />
+
+      {/* REPLACED: Active Node Alerts -> Power Source Mix */}
+      <StatCard
+        icon="bolt"
         iconClassName="text-teal-600"
-        title="Station Battery Health"
+        title="Power Source Mix"
         badge={
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-[11px] font-bold whitespace-nowrap">
-            Healthy
+            Mixed Supply
           </span>
         }
-        value={<span className="text-3xl font-extrabold text-slate-900 tracking-tight">Good (76%)</span>}
+        value={
+          <span className="text-3xl font-extrabold text-slate-900 tracking-tight">1 AC / 2 LiPo</span>
+        }
         description={
           <>
-            <span className="material-symbols-outlined text-[16px] text-teal-600">power</span>1 on AC Mains, 2 on LiPo Battery
+            <span className="material-symbols-outlined text-[16px] text-teal-600">power</span>
+            Master Hub on mains, field nodes on battery
           </>
         }
         footer={
           <span>
-            Lowest node: <strong className="text-amber-700 font-semibold">South Valley (48%)</strong>
+            Lowest battery: <strong className="text-amber-700 font-semibold">South Valley (48%)</strong>
           </span>
         }
       />
-      <StatCard
-        icon="warning"
-        iconClassName="text-amber-600"
-        title="Active Node Alerts"
-        hoverClassName="hover:border-amber-400"
-        badge={
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
-            Attention
-          </span>
-        }
-        value={<span className="text-3xl font-extrabold text-amber-700 tracking-tight">2 Warnings</span>}
-        description={
-          <>
-            <span className="material-symbols-outlined text-[16px]">trending_down</span>
-            Rapid pressure drop on North Garden
-          </>
-        }
-        footer={
-          <span>
-            Secondary alert: <strong className="text-amber-700 font-semibold">High humidity (88%)</strong>
-          </span>
-        }
-      />
+
       <StatCard
         icon="sync"
         title="MQTT Data Frequency"

@@ -48,6 +48,7 @@ export default function NodesList({ search, filter, setFilter, setSearch }: Node
             <tr>
               <th className="py-3.5 px-4">Node &amp; Location</th>
               <th className="py-3.5 px-4">Connection &amp; MQTT</th>
+              <th className="py-3.5 px-4">Signal</th>
               <th className="py-3.5 px-4">Temperature</th>
               <th className="py-3.5 px-4">Humidity</th>
               <th className="py-3.5 px-4">Air Pressure</th>
@@ -81,6 +82,9 @@ export default function NodesList({ search, filter, setFilter, setSearch }: Node
                       <StatusBadge status={node.status} />
                     </div>
                   </div>
+                </td>
+                <td className="py-3.5 px-4">
+                  <SignalCell node={node} />
                 </td>
                 <td className="py-3.5 px-4">
                   <TempCell node={node} />
@@ -131,6 +135,10 @@ export default function NodesList({ search, filter, setFilter, setSearch }: Node
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Signal</span>
+                <SignalCell node={node} />
+              </div>
               <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Temp</span>
                 <TempCell node={node} />
@@ -238,7 +246,7 @@ function HumidityCell({ node }: { node: SensorNode }) {
    );
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      <span className={`text-sm font-bold ${humidityClass}`}>{node.humidity.toFixed(1)}%</span>
+      <span className={humidityClass}>{node.humidity.toFixed(1)}%</span>
 
     </div>
   );
@@ -251,6 +259,44 @@ function PressureCell({ node }: { node: SensorNode }) {
         {node.pressureHpa.toLocaleString(undefined, { minimumFractionDigits: 1 })} <span className="text-xs font-normal text-slate-500">hPa</span>
       </span>
 
+    </div>
+  );
+}
+
+function SignalCell({ node }: { node: SensorNode }) {
+  const rssi = node.signal;
+
+  const signalClass = clsx(
+    "text-sm font-bold",
+    {
+      "text-emerald-600": rssi >= -70,
+      "text-amber-600": rssi < -70 && rssi >= -85,
+      "text-rose-600": rssi < -85,
+    }
+  );
+
+  const label = rssi >= -70 ? "Strong" : rssi >= -85 ? "Fair" : "Weak";
+
+  const barsFilled = rssi >= -60 ? 4 : rssi >= -70 ? 3 : rssi >= -85 ? 2 : 1;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-end gap-[2px] h-3.5">
+        {[1, 2, 3, 4].map((bar) => (
+          <span
+            key={bar}
+            className={clsx(
+              "w-[3px] rounded-sm",
+              bar <= barsFilled ? signalClass.replace("text-", "bg-") : "bg-slate-200"
+            )}
+            style={{ height: `${bar * 3 + 2}px` }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className={signalClass}>{rssi} dBm</span>
+        <span className="text-[10px] text-slate-400">{label}</span>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { NODES } from "@/lib/global-variables";
 import { MetricCardProps, Node, TimeRange, TrendCardProps } from "@/lib/types/overview";
 import { useState } from "react";
+import { HumidityChart, PressureChart, TemperatureChart } from "./_components/overview-charts";
 
 
 function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, unit, description, descriptionClassName, footer }: MetricCardProps) {
@@ -30,207 +31,6 @@ function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, 
 
       <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">{footer}</div>
     </div>
-  );
-}
-
-function PressureChart() {
-  return (
-    <svg className="w-full h-28 overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 110">
-      <defs>
-        <linearGradient id="pressureGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#0891b2" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#0891b2" stopOpacity="0.01" />
-        </linearGradient>
-      </defs>
-
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="20" y2="20" />
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="55" y2="55" />
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="88" y2="88" />
-
-      <line opacity="0.9" stroke="#d97706" strokeDasharray="5,4" strokeWidth="1.5" x1="45" x2="785" y1="55" y2="55" />
-
-      <rect fill="#fffbeb" height="16" rx="2" stroke="#fde68a" strokeWidth="0.8" width="145" x="48" y="47" />
-
-      <text fill="#b45309" fontFamily="Inter" fontSize="9" fontWeight="700" x="52" y="59">
-        ALERT LINE 1,010 hPa
-      </text>
-
-      <text fill="#64748b" fontFamily="Inter" fontSize="9" fontWeight="600" x="10" y="23">
-        1,014
-      </text>
-
-      <text fill="#b45309" fontFamily="Inter" fontSize="9" fontWeight="700" x="10" y="58">
-        1,010
-      </text>
-
-      <text fill="#0891b2" fontFamily="Inter" fontSize="9" fontWeight="700" x="10" y="91">
-        1,008
-      </text>
-
-      <path d="M 45 22 C 200 28, 380 50, 560 76 C 660 84, 730 89, 785 91 L 785 102 L 45 102 Z" fill="url(#pressureGradient)" />
-
-      <path d="M 45 22 C 200 28, 380 50, 560 76 C 660 84, 730 89, 785 91" fill="none" stroke="#0891b2" strokeLinecap="round" strokeWidth="2.5" />
-
-      <line stroke="#0891b2" strokeDasharray="2,2" strokeWidth="1" x1="785" x2="785" y1="15" y2="95" />
-
-      <circle cx="785" cy="91" fill="#0891b2" r="4" stroke="#ffffff" strokeWidth="1.5" />
-
-      <text fill="#0891b2" fontFamily="Inter" fontSize="9" fontWeight="700" textAnchor="end" x="775" y="88">
-        1,008.4 hPa
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="45" y="108">
-        2:00 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="225" y="108">
-        2:45 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="410" y="108">
-        3:30 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="595" y="108">
-        4:15 PM
-      </text>
-
-      <text fill="#0891b2" fontFamily="Inter" fontSize="9" fontWeight="700" x="760" y="108">
-        NOW
-      </text>
-    </svg>
-  );
-}
-
-function HumidityChart() {
-  return (
-    <svg className="w-full h-28 overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 110">
-      <defs>
-        <linearGradient id="humidityGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#0d9488" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#0d9488" stopOpacity="0.01" />
-        </linearGradient>
-      </defs>
-
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="20" y2="20" />
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="52" y2="52" />
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="85" y2="85" />
-
-      <line opacity="0.85" stroke="#0d9488" strokeDasharray="4,3" strokeWidth="1.5" x1="45" x2="785" y1="52" y2="52" />
-
-      <rect fill="#ccfbf1" height="16" rx="2" stroke="#99f6e4" strokeWidth="0.8" width="138" x="48" y="44" />
-
-      <text fill="#0f766e" fontFamily="Inter" fontSize="9" fontWeight="700" x="52" y="56">
-        MOISTURE ALERT 75%
-      </text>
-
-      <text fill="#0d9488" fontFamily="Inter" fontSize="9" fontWeight="700" x="10" y="23">
-        90%
-      </text>
-
-      <text fill="#0f766e" fontFamily="Inter" fontSize="9" fontWeight="600" x="10" y="55">
-        75%
-      </text>
-
-      <text fill="#64748b" fontFamily="Inter" fontSize="9" fontWeight="600" x="10" y="88">
-        60%
-      </text>
-
-      <path d="M 45 88 C 180 84, 320 78, 480 50 C 600 32, 700 24, 785 22 L 785 102 L 45 102 Z" fill="url(#humidityGradient)" />
-
-      <path d="M 45 88 C 180 84, 320 78, 480 50 C 600 32, 700 24, 785 22" fill="none" stroke="#0d9488" strokeLinecap="round" strokeWidth="2.5" />
-
-      <line stroke="#0d9488" strokeDasharray="2,2" strokeWidth="1" x1="785" x2="785" y1="15" y2="95" />
-
-      <circle cx="785" cy="22" fill="#0d9488" r="4" stroke="#ffffff" strokeWidth="1.5" />
-
-      <text fill="#0d9488" fontFamily="Inter" fontSize="9" fontWeight="700" textAnchor="end" x="775" y="20">
-        84.2%
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="45" y="108">
-        2:00 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="225" y="108">
-        2:45 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="410" y="108">
-        3:30 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="595" y="108">
-        4:15 PM
-      </text>
-
-      <text fill="#0d9488" fontFamily="Inter" fontSize="9" fontWeight="700" x="760" y="108">
-        NOW
-      </text>
-    </svg>
-  );
-}
-
-function TemperatureChart() {
-  return (
-    <svg className="w-full h-28 overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 110">
-      <defs>
-        <linearGradient id="temperatureGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#d97706" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#d97706" stopOpacity="0.01" />
-        </linearGradient>
-      </defs>
-
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="22" y2="22" />
-
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="55" y2="55" />
-
-      <line stroke="#f1f5f9" strokeWidth="1" x1="45" x2="785" y1="85" y2="85" />
-
-      <text fill="#64748b" fontFamily="Inter" fontSize="9" fontWeight="600" x="10" y="25">
-        23°C
-      </text>
-
-      <text fill="#64748b" fontFamily="Inter" fontSize="9" fontWeight="600" x="10" y="58">
-        22°C
-      </text>
-
-      <text fill="#b45309" fontFamily="Inter" fontSize="9" fontWeight="700" x="10" y="88">
-        21°C
-      </text>
-
-      <path d="M 45 30 C 180 32, 340 45, 520 62 C 640 73, 720 78, 785 80 L 785 102 L 45 102 Z" fill="url(#temperatureGradient)" />
-
-      <path d="M 45 30 C 180 32, 340 45, 520 62 C 640 73, 720 78, 785 80" fill="none" stroke="#d97706" strokeLinecap="round" strokeWidth="2.5" />
-
-      <line stroke="#d97706" strokeDasharray="2,2" strokeWidth="1" x1="785" x2="785" y1="15" y2="95" />
-
-      <circle cx="785" cy="80" fill="#d97706" r="4" stroke="#ffffff" strokeWidth="1.5" />
-
-      <text fill="#d97706" fontFamily="Inter" fontSize="9" fontWeight="700" textAnchor="end" x="775" y="77">
-        21.4°C
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="45" y="108">
-        2:00 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="225" y="108">
-        2:45 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="410" y="108">
-        3:30 PM
-      </text>
-
-      <text fill="#94a3b8" fontFamily="Inter" fontSize="9" fontWeight="500" x="595" y="108">
-        4:15 PM
-      </text>
-
-      <text fill="#d97706" fontFamily="Inter" fontSize="9" fontWeight="700" x="760" y="108">
-        NOW
-      </text>
-    </svg>
   );
 }
 
@@ -368,7 +168,7 @@ export default function OverviewPage() {
   const [multiNodeCheck, setMultiNodeCheck] = useState(true);
 
   return (
-    <main className="w-full pt-16 bg-slate-50 min-h-screen">
+    <main className="w-full bg-slate-50 min-h-screen">
       <div className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
         {/* WEATHER ALERT */}
         {alertVisible && (
