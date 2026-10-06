@@ -1,10 +1,72 @@
-"use client";
+import Link from "next/link";
+import { MetricCardProps, TrendCardProps } from "@/lib/types/overview";
+import {
+  CHART_RANGES,
+  getLatestPerNode,
+  getSeries,
+  getSettings,
+  getTempRange24h,
+  parseChartRange,
+} from "@/lib/db/overview";
+import { getNodes } from "@/lib/db/queries";
+import { ONLINE_WINDOW_MS, assess, type NodeInput, type RiskLevel } from "@/lib/prediction/engine";
+import AlertBanner from "./_components/alert-banner";
+import AutoRefresh from "./_components/auto-refresh";
+import ThresholdsPanel from "./_components/thresholds-panel";
+import TrendChart, { type ChartSeries } from "./_components/trend-chart";
 
-import { NODES } from "@/lib/global-variables";
-import { MetricCardProps, Node, TimeRange, TrendCardProps } from "@/lib/types/overview";
-import { useState } from "react";
-import { HumidityChart, PressureChart, TemperatureChart } from "./_components/overview-charts";
+export const dynamic = "force-dynamic";
 
+const COLORS = ["#0891b2", "#0d9488", "#d97706", "#6366f1", "#e11d48"];
+
+/* ---------- helpers ---------- */
+
+function f(n: number | null | undefined, d = 1) {
+  if (n == null) return "—";
+  return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function avg(xs: (number | null | undefined)[]) {
+  const v = xs.filter((x): x is number => x != null);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+function dewPoint(tempC: number, rh: number) {
+  const a = 17.62;
+  const b = 243.12;
+  const g = Math.log(rh / 100) + (a * tempC) / (b + tempC);
+  return (b * g) / (a - g);
+}
+
+function ago(ms: number) {
+  const m = Math.round(ms / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h} h ago`;
+  return `${Math.floor(h / 24)} d ago`;
+}
+
+function startEnd(series: ChartSeries[]) {
+  if (series.length === 0) return null;
+  return {
+    start: avg(series.map((s) => s.points[0].v)) as number,
+    end: avg(series.map((s) => s.points[s.points.length - 1].v)) as number,
+  };
+}
+
+const LEVELS: Record<
+  RiskLevel,
+  { label: string; badge: string; badgeClass: string }
+> = {
+  collecting: { label: "Collecting data", badge: "Warming up", badgeClass: "bg-slate-100 text-slate-700" },
+  low: { label: "Low Risk", badge: "No rain expected", badgeClass: "bg-teal-50 border border-teal-200 text-teal-800" },
+  moderate: { label: "Moderate Risk", badge: "Watch", badgeClass: "bg-amber-50 border border-amber-200 text-amber-800" },
+  high: { label: "High Risk", badge: "Rain Likely", badgeClass: "bg-amber-100 border border-amber-200 text-amber-800" },
+  raining: { label: "Raining", badge: "Rain detected", badgeClass: "bg-cyan-100 border border-cyan-200 text-cyan-800" },
+};
+
+/* ---------- presentational components ---------- */
 
 function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, unit, description, descriptionClassName, footer }: MetricCardProps) {
   return (
@@ -12,20 +74,16 @@ function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`material-symbols-outlined text-[20px] ${iconClassName}`}>{icon}</span>
-
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</span>
         </div>
-
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ${badgeClassName}`}>{badge}</span>
       </div>
 
       <div className="my-3">
         <div className="flex items-baseline gap-1.5">
           <span className="text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{value}</span>
-
           {unit && <span className="text-sm font-medium text-slate-500">{unit}</span>}
         </div>
-
         <p className={`text-xs font-medium mt-1 flex items-center gap-1 ${descriptionClassName}`}>{description}</p>
       </div>
 
@@ -42,25 +100,19 @@ function TrendCard({ icon, iconClassName, title, badge, badgeClassName, subtitle
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconClassName}`}>
             <span className="material-symbols-outlined text-[18px]">{icon}</span>
           </div>
-
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">{title}</h3>
-
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClassName}`}>{badge}</span>
             </div>
-
             <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>
           </div>
         </div>
 
         <div className="flex items-baseline gap-2">
           <span className="text-xs text-slate-500">Current:</span>
-
           <span className="text-lg font-bold text-slate-900 tabular-nums">{current}</span>
-
           <span className="text-xs font-medium text-slate-500">{unit}</span>
-
           <span className={`text-xs font-semibold ml-1 flex items-center ${changeClassName}`}>{change}</span>
         </div>
       </div>
@@ -70,144 +122,165 @@ function TrendCard({ icon, iconClassName, title, badge, badgeClassName, subtitle
   );
 }
 
-function NodeStatusCard({ node }: { node: Node }) {
-  const dotClass = node.color === "primary" ? "bg-cyan-600" : "bg-teal-600";
-
+function NodeStatusCard({
+  name,
+  location,
+  color,
+  status,
+  online,
+  pressure,
+  temperature,
+  humidity,
+}: {
+  name: string;
+  location: string | null;
+  color: string;
+  status: string;
+  online: boolean;
+  pressure: string;
+  temperature: string;
+  humidity: string;
+}) {
   return (
     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-2 hover:border-cyan-600/40 transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${dotClass}`} />
-
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
           <div>
-            <span className="text-xs font-bold text-slate-900">{node.name}</span>
-
-            <span className="text-[11px] text-slate-500 block">Location: {node.location}</span>
+            <span className="text-xs font-bold text-slate-900">{name}</span>
+            {location && <span className="text-[11px] text-slate-500 block">Location: {location}</span>}
           </div>
         </div>
 
-        <span className="text-[11px] font-semibold text-teal-700 flex items-center gap-1 whitespace-nowrap">
-          <span className="w-1.5 h-1.5 rounded-full bg-teal-600" />
-          {node.status}
+        <span className={`text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap ${online ? "text-teal-700" : "text-slate-500"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${online ? "bg-teal-600" : "bg-slate-400"}`} />
+          {status}
         </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-xs">
         <div>
           <span className="text-slate-500 block text-[11px]">Pressure</span>
-          <strong className="text-slate-800 font-semibold">{node.pressure}</strong>
+          <strong className="text-slate-800 font-semibold">{pressure}</strong>
         </div>
-
         <div>
           <span className="text-slate-500 block text-[11px]">Temp</span>
-          <strong className="text-slate-800 font-semibold">{node.temperature}</strong>
+          <strong className="text-slate-800 font-semibold">{temperature}</strong>
         </div>
-
         <div>
           <span className="text-slate-500 block text-[11px]">Humidity</span>
-          <strong className="text-slate-800 font-semibold">{node.humidity}</strong>
+          <strong className="text-slate-800 font-semibold">{humidity}</strong>
         </div>
       </div>
     </div>
   );
 }
 
-function ThresholdRule({
-  title,
-  description,
-  current,
-  type,
-  defaultValue,
-  min,
-  max,
-  step,
+/* ---------- page ---------- */
+
+export default async function OverviewPage({
+  searchParams,
 }: {
-  title: string;
-  description: React.ReactNode;
-  current: string;
-  type: "pressure" | "humidity";
-  defaultValue: number;
-  min: number;
-  max: number;
-  step: number;
+  searchParams: Promise<{ range?: string }>;
 }) {
-  const [value, setValue] = useState(defaultValue);
+  const sp = await searchParams;
+  const range = parseChartRange(sp.range);
+  const cfg = CHART_RANGES[range];
+  const now = Date.now();
 
-  const pressure = type === "pressure";
+  const [nodeRows, latest, settings, tempRange, predSeries, rangeSeries] = await Promise.all([
+    getNodes(),
+    getLatestPerNode(),
+    getSettings(),
+    getTempRange24h(now),
+    getSeries("3h", now),
+    range === "3h" ? Promise.resolve(null) : getSeries(range, now),
+  ]);
+  const chartData = rangeSeries ?? predSeries;
 
-  return (
-    <div className={`p-3 rounded-lg flex flex-col gap-1.5 ${pressure ? "bg-amber-50/70 border border-amber-200/80" : "bg-teal-50/70 border border-teal-200/80"}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-slate-900">{title}</span>
+  /* nodes */
+  const latestById = new Map(latest.map((r) => [r.nodeId, r]));
+  const nodeViews = nodeRows.map((n, i) => {
+    const l = latestById.get(n.id) ?? null;
+    const online = !!l && now - l.recordedAt.getTime() <= ONLINE_WINDOW_MS;
+    return { id: n.id, name: n.name, location: n.location, color: COLORS[i % COLORS.length], latest: l, online };
+  });
+  const onlineViews = nodeViews.filter((n) => n.online && n.latest);
 
-        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${pressure ? "bg-amber-200 text-amber-900" : "bg-teal-200 text-teal-900"}`}>Triggered</span>
-      </div>
+  /* prediction */
+  const inputs: NodeInput[] = nodeViews.map((n) => ({
+    nodeId: n.id,
+    online: n.online,
+    isRaining: n.latest?.isRaining ?? false,
+    pressure: predSeries[n.id]?.pressure ?? [],
+    humidity: predSeries[n.id]?.humidity ?? [],
+    temperature: predSeries[n.id]?.temperature ?? [],
+  }));
+  const result = assess(inputs, settings, now);
+  const level = LEVELS[result.level];
 
-      <p className="text-xs text-slate-600">{description}</p>
+  /* current values (average of online nodes' latest readings) */
+  const pressureNow = avg(onlineViews.map((n) => n.latest!.pressure));
+  const humidityNow = avg(onlineViews.map((n) => n.latest!.humidity));
+  const tempNow = avg(onlineViews.map((n) => n.latest!.temperature));
+  const dew = tempNow != null && humidityNow != null && humidityNow > 0 ? dewPoint(tempNow, humidityNow) : null;
 
-      <div className="flex items-center justify-between gap-4 text-xs pt-1">
-        <span className={`font-semibold ${pressure ? "text-amber-800" : "text-teal-800"}`}>{current}</span>
+  /* charts */
+  const toSeries = (metric: "pressure" | "humidity" | "temperature"): ChartSeries[] =>
+    nodeViews
+      .map((n) => ({ name: n.name, color: n.color, points: chartData[n.id]?.[metric] ?? [] }))
+      .filter((s) => s.points.length > 0);
 
-        <input
-          className={`w-24 h-1.5 rounded-lg cursor-pointer ${pressure ? "accent-amber-600" : "accent-teal-600"}`}
-          max={max}
-          min={min}
-          step={step}
-          type="range"
-          value={value}
-          onChange={(event) => setValue(Number(event.target.value))}
-        />
-      </div>
-    </div>
-  );
-}
+  const pressureSeries = toSeries("pressure");
+  const humiditySeries = toSeries("humidity");
+  const tempSeries = toSeries("temperature");
 
-export default function OverviewPage() {
-  const [timeRange, setTimeRange] = useState<TimeRange>("3h");
-  const [alertVisible, setAlertVisible] = useState(true);
-  const [multiNodeCheck, setMultiNodeCheck] = useState(true);
+  const arrow = (a: number | null, b: number | null) => (a != null && b != null ? `${b >= a ? "↑" : "↓"} ${f(a)} → ${f(b)}` : "—");
+  const pse = startEnd(pressureSeries);
+  const hse = startEnd(humiditySeries);
+  const tse = startEnd(tempSeries);
+
+  /* pressure card state */
+  const drop = result.pressureDrop3h;
+  const pressureTriggered = drop !== null && drop >= settings.pressureDropHpa;
+  const pressureBadge =
+    drop === null
+      ? { text: "Collecting data", cls: "bg-slate-100 text-slate-700" }
+      : pressureTriggered
+        ? { text: "● Falling fast", cls: "bg-amber-100 border border-amber-200 text-amber-800" }
+        : drop >= 0.5
+          ? { text: "Falling", cls: "bg-amber-50 border border-amber-200 text-amber-800" }
+          : drop <= -0.5
+            ? { text: "Rising", cls: "bg-teal-50 border border-teal-200 text-teal-800" }
+            : { text: "Steady", cls: "bg-slate-100 text-slate-700" };
+
+  const humidityHigh = humidityNow !== null && humidityNow >= settings.humidityPct;
+  const hRise = result.humidityRise1h;
+  const tChange = result.tempChange3h;
+
+  const rainingNodes = result.nodesRaining;
+  const onlineCount = onlineViews.length;
+
+  /* alert banner */
+  const bannerMessage =
+    result.level === "raining"
+      ? `Rain sensor is wet on ${rainingNodes} of ${result.nodesOnline} online node${result.nodesOnline === 1 ? "" : "s"}.`
+      : `Pressure is falling ${f(drop)} hPa per 3 hours with humidity at ${f(humidityNow, 0)}%. ${result.nodesFlagged} of ${result.nodesAssessed} node${result.nodesAssessed === 1 ? "" : "s"} signal rain.`;
 
   return (
     <main className="w-full bg-slate-50 min-h-screen">
+      <AutoRefresh intervalMs={30000} />
+
       <div className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 max-w-[1600px] mx-auto w-full">
         {/* WEATHER ALERT */}
-        {alertVisible && (
-          <div className="relative overflow-hidden rounded-xl bg-amber-50 border border-amber-200 shadow-sm p-4 sm:p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-700">
-                <span className="material-symbols-outlined text-[24px]">thunderstorm</span>
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-amber-900">Weather Alert: Heavy Rain Likely Within 45 Minutes</span>
-
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-200/80 text-amber-900">88% Probability</span>
-                </div>
-
-                <p className="text-xs sm:text-sm text-amber-950">
-                  Air pressure is dropping rapidly across all 3 sensor stations (-1.8 hPa in 3 hours) and air moisture is rising quickly.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-end lg:self-center shrink-0">
-              <button
-                className="h-8 px-3 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs font-semibold transition-colors shadow-sm"
-                type="button"
-              >
-                View Thresholds
-              </button>
-
-              <button
-                className="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors shadow-sm"
-                onClick={() => setAlertVisible(false)}
-                type="button"
-              >
-                Acknowledge
-              </button>
-            </div>
-          </div>
+        {result.alert && (
+          <AlertBanner
+            key={result.level}
+            title={result.level === "raining" ? "Rain Detected" : "Weather Alert: Rain Likely"}
+            badge={`Risk score ${result.score ?? "—"}/100`}
+            message={bannerMessage}
+            icon={result.level === "raining" ? "rainy" : "thunderstorm"}
+          />
         )}
 
         {/* METRIC CARDS */}
@@ -216,18 +289,24 @@ export default function OverviewPage() {
             icon="compress"
             iconClassName="text-cyan-600"
             title="Air Pressure"
-            badge="● Falling fast"
-            badgeClassName="bg-amber-100 border border-amber-200 text-amber-800"
-            value="1,008.4"
+            badge={pressureBadge.text}
+            badgeClassName={pressureBadge.cls}
+            value={f(pressureNow)}
             unit="hPa"
-            description="↓ -1.8 hPa in last 3 hours"
-            descriptionClassName="text-amber-700"
+            description={
+              drop === null
+                ? "Needs ~45 min of history for a trend"
+                : `${drop >= 0 ? "↓" : "↑"} ${f(Math.abs(drop))} hPa per 3 hours`
+            }
+            descriptionClassName={pressureTriggered ? "text-amber-700" : "text-slate-600"}
             footer={
               <>
                 <span>
-                  Rain threshold: <strong className="text-slate-800">1,010 hPa</strong>
+                  Alert at: <strong className="text-slate-800">≥ {f(settings.pressureDropHpa)} hPa / 3 h</strong>
                 </span>
-                <span className="text-amber-700 font-bold">Below normal</span>
+                <span className={pressureTriggered ? "text-amber-700 font-bold" : "text-slate-500 font-medium"}>
+                  {pressureTriggered ? "Triggered" : "Normal"}
+                </span>
               </>
             }
           />
@@ -236,17 +315,21 @@ export default function OverviewPage() {
             icon="humidity_percentage"
             iconClassName="text-teal-600"
             title="Air Humidity"
-            badge="High Moisture"
-            badgeClassName="bg-teal-50 border border-teal-200 text-teal-800"
-            value="84.2%"
-            description="↑ +6.5% in last hour"
-            descriptionClassName="text-teal-700"
+            badge={humidityHigh ? "High Moisture" : "Normal"}
+            badgeClassName={humidityHigh ? "bg-teal-50 border border-teal-200 text-teal-800" : "bg-slate-100 text-slate-700"}
+            value={humidityNow === null ? "—" : `${f(humidityNow)}%`}
+            description={hRise === null ? "Needs ~20 min of history" : `${hRise >= 0 ? "↑" : "↓"} ${f(Math.abs(hRise))}% in last hour`}
+            descriptionClassName={hRise !== null && hRise >= 5 ? "text-teal-700" : "text-slate-600"}
             footer={
               <>
                 <span>
-                  Dew point: <strong className="text-slate-800">14.1°C</strong>
+                  Dew point: <strong className="text-slate-800">{dew === null ? "—" : `${f(dew)}°C`}</strong>
                 </span>
-                <span className="text-teal-700 font-medium">Condensing</span>
+                {dew !== null && tempNow !== null && (
+                  <span className={tempNow - dew < 2 ? "text-teal-700 font-medium" : "text-slate-500 font-medium"}>
+                    {tempNow - dew < 2 ? "Condensing" : "Not saturated"}
+                  </span>
+                )}
               </>
             }
           />
@@ -255,14 +338,17 @@ export default function OverviewPage() {
             icon="thermostat"
             iconClassName="text-amber-600"
             title="Temperature"
-            badge="Mild / Stable"
+            badge={tChange === null ? "Collecting data" : tChange <= -1 ? "Cooling" : tChange >= 1 ? "Warming" : "Stable"}
             badgeClassName="bg-slate-100 text-slate-700"
-            value="21.4°C"
-            description="― Within comfortable range"
+            value={tempNow === null ? "—" : `${f(tempNow)}°C`}
+            description={tChange === null ? "Needs ~45 min of history" : `${tChange >= 0 ? "↑" : "↓"} ${f(Math.abs(tChange))}°C over 3 hours`}
             descriptionClassName="text-slate-600"
             footer={
               <span>
-                24h Range: <strong className="text-slate-800">18.2°C – 24.1°C</strong>
+                24h Range:{" "}
+                <strong className="text-slate-800">
+                  {tempRange.lo === null ? "—" : `${f(tempRange.lo)}°C – ${f(tempRange.hi)}°C`}
+                </strong>
               </span>
             }
           />
@@ -271,15 +357,22 @@ export default function OverviewPage() {
             icon="rainy"
             iconClassName="text-cyan-600"
             title="Rain Risk"
-            badge="Rain Expected"
-            badgeClassName="bg-amber-100 border border-amber-200 text-amber-800"
-            value="High Risk"
-            unit="(88%)"
-            description="◷ Expected in ~35 to 45 mins"
+            badge={level.badge}
+            badgeClassName={level.badgeClass}
+            value={level.label}
+            unit={result.score !== null ? `(${result.score}/100)` : undefined}
+            description={
+              result.nodesAssessed > 0
+                ? `${result.nodesFlagged} of ${result.nodesAssessed} nodes signal rain`
+                : "Waiting for enough pressure history"
+            }
             descriptionClassName="text-slate-600"
             footer={
               <span>
-                Rain sensor: <strong className="text-slate-800">Dry (Pre-rain front)</strong>
+                Rain sensor:{" "}
+                <strong className="text-slate-800">
+                  {rainingNodes > 0 ? `Wet (${rainingNodes}/${result.nodesOnline} nodes)` : "Dry"}
+                </strong>
               </span>
             }
           />
@@ -293,11 +386,11 @@ export default function OverviewPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-cyan-600 text-[22px]">insights</span>
-
-                  <h2 className="text-lg font-bold text-slate-900">Live Sensor Trends (Last 3 Hours)</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Sensor Trends ({cfg.label})</h2>
                 </div>
-
-                <p className="text-xs text-slate-500 mt-0.5">Continuous real-time telemetry comparison across station sensors</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Per-node averages in {cfg.bin} bins · refreshes every 30 s
+                </p>
               </div>
 
               <div className="flex items-center bg-slate-100 border border-slate-200 p-0.5 rounded-lg shrink-0 text-xs self-start sm:self-center">
@@ -308,16 +401,16 @@ export default function OverviewPage() {
                     ["7d", "7 days"],
                   ] as const
                 ).map(([value, label]) => (
-                  <button
+                  <Link
                     key={value}
-                    onClick={() => setTimeRange(value)}
+                    href={value === "3h" ? "/" : `/?range=${value}`}
+                    scroll={false}
                     className={`px-3 py-1 rounded font-medium transition-colors ${
-                      timeRange === value ? "bg-white text-cyan-700 font-bold shadow-sm" : "text-slate-600 hover:text-slate-900"
+                      range === value ? "bg-white text-cyan-700 font-bold shadow-sm" : "text-slate-600 hover:text-slate-900"
                     }`}
-                    type="button"
                   >
                     {label}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -328,42 +421,42 @@ export default function OverviewPage() {
                 icon="compress"
                 iconClassName="bg-cyan-50 text-cyan-700"
                 title="Air Pressure Trend"
-                badge="● Triggered (-1.8 hPa drop)"
-                badgeClassName="bg-amber-100 border border-amber-200 text-amber-800"
-                subtitle="Rain Threshold line set at 1,010.0 hPa"
-                current="1,008.4"
+                badge={pressureBadge.text}
+                badgeClassName={pressureBadge.cls}
+                subtitle={`Alert when pressure falls ≥ ${f(settings.pressureDropHpa)} hPa per 3 hours`}
+                current={f(pressureNow)}
                 unit="hPa"
-                change="↓ 1,014.0 → 1,008.4"
-                changeClassName="text-amber-700"
-                chart={<PressureChart />}
+                change={arrow(pse?.start ?? null, pse?.end ?? null)}
+                changeClassName={pressureTriggered ? "text-amber-700" : "text-slate-600"}
+                chart={<TrendChart series={pressureSeries} from={now - cfg.ms} to={now} binMs={cfg.binMs} unit="hPa" decimals={1} />}
               />
 
               <TrendCard
                 icon="humidity_percentage"
                 iconClassName="bg-teal-50 text-teal-700"
                 title="Air Humidity Trend"
-                badge="High Moisture (+24.2% in 3h)"
-                badgeClassName="bg-teal-50 border border-teal-200 text-teal-800"
-                subtitle="Rapid saturation indicating oncoming cloud condensation"
-                current="84.2%"
-                unit=""
-                change="↑ 60.0% → 84.2%"
+                badge={humidityHigh ? "High Moisture" : "Normal"}
+                badgeClassName={humidityHigh ? "bg-teal-50 border border-teal-200 text-teal-800" : "bg-slate-100 text-slate-700"}
+                subtitle={`Alert when humidity exceeds ${settings.humidityPct}%`}
+                current={f(humidityNow)}
+                unit="%"
+                change={arrow(hse?.start ?? null, hse?.end ?? null)}
                 changeClassName="text-teal-700"
-                chart={<HumidityChart />}
+                chart={<TrendChart series={humiditySeries} from={now - cfg.ms} to={now} binMs={cfg.binMs} unit="%" decimals={1} />}
               />
 
               <TrendCard
                 icon="thermostat"
                 iconClassName="bg-amber-100 text-amber-700"
                 title="Ambient Temperature Trend"
-                badge="Mild / Pre-storm Cooling"
+                badge={tChange === null ? "Collecting data" : tChange <= -1 ? "Cooling" : tChange >= 1 ? "Warming" : "Stable"}
                 badgeClassName="bg-slate-100 text-slate-700"
-                subtitle="Steady descent as overcast sky blocks solar radiation"
-                current="21.4°C"
-                unit=""
-                change="↓ 22.8°C → 21.4°C"
+                subtitle="Falling temperature with rising humidity often precedes rain"
+                current={f(tempNow)}
+                unit="°C"
+                change={arrow(tse?.start ?? null, tse?.end ?? null)}
                 changeClassName="text-slate-600"
-                chart={<TemperatureChart />}
+                chart={<TrendChart series={tempSeries} from={now - cfg.ms} to={now} binMs={cfg.binMs} unit="°C" decimals={1} />}
               />
             </div>
 
@@ -373,10 +466,11 @@ export default function OverviewPage() {
                 <div className="w-8 h-8 rounded bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[18px]">trending_down</span>
                 </div>
-
                 <div>
-                  <span className="text-slate-500 block">Pressure Differential</span>
-                  <strong className="text-slate-800 font-bold text-sm">-1.8 hPa (Rapid)</strong>
+                  <span className="text-slate-500 block">Pressure Tendency</span>
+                  <strong className="text-slate-800 font-bold text-sm">
+                    {drop === null ? "Collecting data" : `${drop >= 0 ? "−" : "+"}${f(Math.abs(drop))} hPa / 3 h`}
+                  </strong>
                 </div>
               </div>
 
@@ -384,10 +478,11 @@ export default function OverviewPage() {
                 <div className="w-8 h-8 rounded bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[18px]">water</span>
                 </div>
-
                 <div>
-                  <span className="text-slate-500 block">Moisture Accumulation</span>
-                  <strong className="text-slate-800 font-bold text-sm">+24.2% in 3 hours</strong>
+                  <span className="text-slate-500 block">Moisture Change</span>
+                  <strong className="text-slate-800 font-bold text-sm">
+                    {hRise === null ? "Collecting data" : `${hRise >= 0 ? "+" : "−"}${f(Math.abs(hRise))}% in 1 hour`}
+                  </strong>
                 </div>
               </div>
 
@@ -395,10 +490,13 @@ export default function OverviewPage() {
                 <div className="w-8 h-8 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[18px]">crisis_alert</span>
                 </div>
-
                 <div>
                   <span className="text-slate-500 block">Node Consensus</span>
-                  <strong className="text-slate-800 font-bold text-sm">3 of 3 Nodes Agree</strong>
+                  <strong className="text-slate-800 font-bold text-sm">
+                    {result.nodesAssessed === 0
+                      ? "Collecting data"
+                      : `${result.nodesFlagged} of ${result.nodesAssessed} Nodes Agree`}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -411,95 +509,48 @@ export default function OverviewPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-cyan-600 text-[20px]">hub</span>
-
                   <h3 className="text-base font-bold text-slate-900">Node Status Overview</h3>
                 </div>
 
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">All 3 Connected</span>
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                    nodeViews.length > 0 && onlineCount === nodeViews.length
+                      ? "bg-teal-50 text-teal-700 border-teal-200"
+                      : "bg-amber-50 text-amber-800 border-amber-200"
+                  }`}
+                >
+                  {onlineCount} of {nodeViews.length} Connected
+                </span>
               </div>
 
               <div className="flex flex-col gap-3">
-                {NODES.map((node) => (
-                  <NodeStatusCard key={node.name} node={node} />
+                {nodeViews.map((n) => (
+                  <NodeStatusCard
+                    key={n.id}
+                    name={n.name}
+                    location={n.location}
+                    color={n.color}
+                    online={n.online}
+                    status={n.online ? "Online" : n.latest ? `Offline · ${ago(now - n.latest.recordedAt.getTime())}` : "No data"}
+                    pressure={n.latest?.pressure != null ? `${f(n.latest.pressure)} hPa` : "—"}
+                    temperature={n.latest?.temperature != null ? `${f(n.latest.temperature)}°C` : "—"}
+                    humidity={n.latest?.humidity != null ? `${f(n.latest.humidity)}%` : "—"}
+                  />
                 ))}
+                {nodeViews.length === 0 && (
+                  <p className="text-xs text-slate-400 py-4 text-center">
+                    No nodes yet. Start the MQTT worker and power a node.
+                  </p>
+                )}
               </div>
             </div>
 
             {/* THRESHOLDS */}
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-[20px]">notifications_active</span>
-
-                  <h3 className="text-base font-bold text-slate-900">Thresholds & Alerts</h3>
-                </div>
-
-                <span className="text-xs font-semibold text-cyan-700">Live Rules</span>
-              </div>
-
-              <div className="flex flex-col gap-3.5">
-                <ThresholdRule
-                  title="Pressure Drop Alert"
-                  description={
-                    <>
-                      Alert when pressure drops &gt; <strong className="text-slate-800">1.5 hPa in 3 hours</strong>
-                    </>
-                  }
-                  current="Current drop: 1.8 hPa"
-                  type="pressure"
-                  defaultValue={1.5}
-                  min={0.5}
-                  max={3}
-                  step={0.1}
-                />
-
-                <ThresholdRule
-                  title="High Humidity Alert"
-                  description={
-                    <>
-                      Alert when humidity exceeds <strong className="text-slate-800">75%</strong>
-                    </>
-                  }
-                  current="Current: 84.2%"
-                  type="humidity"
-                  defaultValue={75}
-                  min={60}
-                  max={95}
-                  step={5}
-                />
-
-                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900">Alert Dispatch Policy</span>
-
-                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-800">Active</span>
-                  </div>
-
-                  <p className="text-xs text-slate-600">
-                    Send push & email notification via MQTT when <strong className="text-slate-800">2 or more nodes agree</strong>.
-                  </p>
-
-                  <label className="flex items-center gap-2 pt-1 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      checked={multiNodeCheck}
-                      onChange={(event) => setMultiNodeCheck(event.target.checked)}
-                      className="rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 h-3.5 w-3.5"
-                      type="checkbox"
-                    />
-
-                    <span>Prevent false alarms (Multi-sensor check)</span>
-                  </label>
-                </div>
-
-                <button
-                  className="w-full h-9 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">save</span>
-                  Save Changes
-                </button>
-              </div>
-            </div>
+            <ThresholdsPanel
+              initial={settings}
+              currentDrop={drop}
+              currentHumidity={humidityNow}
+            />
           </div>
         </div>
       </div>

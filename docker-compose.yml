@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: rain-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rain
+      POSTGRES_PASSWORD: rainpass
+      POSTGRES_DB: rain_prediction
+    ports:
+      - "5433:5432"
+    volumes:
+      - rain_pgdata:/var/lib/postgresql
+
+volumes:
+  rain_pgdata:

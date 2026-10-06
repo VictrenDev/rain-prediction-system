@@ -406,7 +406,7 @@ export default function RainPredictionPage() {
           </div>
           <span className="text-xs font-semibold text-cyan-800 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200">Configurable</span>
         </div>
-        <p className="text-xs text-slate-500 -mt-2">These values decide when the model calls a prediction "Rain Likely."</p>
+        <p className="text-xs text-slate-500 -mt-2">These values decide when the model calls a prediction &quot;Rain Likely.&quot;</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col gap-2">
