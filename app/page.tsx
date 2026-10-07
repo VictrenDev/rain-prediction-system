@@ -8,6 +8,18 @@ import {
   getTempRange24h,
   parseChartRange,
 } from "@/lib/db/overview";
+import {
+  CloudRain,
+  CloudLightning,
+  Gauge,
+  Droplets,
+  Thermometer,
+  TrendingDown,
+  Waves,
+  CircleAlert,
+  Network,
+  ChartNoAxesCombined,
+} from "lucide-react";
 import { getNodes } from "@/lib/db/queries";
 import { ONLINE_WINDOW_MS, assess, type NodeInput, type RiskLevel } from "@/lib/prediction/engine";
 import AlertBanner from "./_components/alert-banner";
@@ -69,11 +81,12 @@ const LEVELS: Record<
 /* ---------- presentational components ---------- */
 
 function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, unit, description, descriptionClassName, footer }: MetricCardProps) {
+  const Icon = icon;
   return (
     <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-cyan-600/40 transition-colors">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`material-symbols-outlined text-[20px] ${iconClassName}`}>{icon}</span>
+          <span className={`material-symbols-outlined text-[20px] ${iconClassName}`}>{<Icon className={`size-5 ${iconClassName}`} />}</span>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</span>
         </div>
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ${badgeClassName}`}>{badge}</span>
@@ -93,12 +106,13 @@ function MetricCard({ icon, iconClassName, title, badge, badgeClassName, value, 
 }
 
 function TrendCard({ icon, iconClassName, title, badge, badgeClassName, subtitle, current, unit, change, changeClassName, chart }: TrendCardProps) {
+  const Icon = icon;
   return (
     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col gap-3 hover:border-cyan-600/40 transition-colors">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconClassName}`}>
-            <span className="material-symbols-outlined text-[18px]">{icon}</span>
+            <span className="material-symbols-outlined text-[18px]">{<Icon size={18} />}</span>
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -286,7 +300,7 @@ export default async function OverviewPage({
         {/* METRIC CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <MetricCard
-            icon="compress"
+            icon= {Gauge}
             iconClassName="text-cyan-600"
             title="Air Pressure"
             badge={pressureBadge.text}
@@ -312,7 +326,7 @@ export default async function OverviewPage({
           />
 
           <MetricCard
-            icon="humidity_percentage"
+            icon={Droplets}
             iconClassName="text-teal-600"
             title="Air Humidity"
             badge={humidityHigh ? "High Moisture" : "Normal"}
@@ -335,7 +349,7 @@ export default async function OverviewPage({
           />
 
           <MetricCard
-            icon="thermostat"
+            icon={Thermometer}
             iconClassName="text-amber-600"
             title="Temperature"
             badge={tChange === null ? "Collecting data" : tChange <= -1 ? "Cooling" : tChange >= 1 ? "Warming" : "Stable"}
@@ -354,7 +368,7 @@ export default async function OverviewPage({
           />
 
           <MetricCard
-            icon="rainy"
+            icon={CloudRain}
             iconClassName="text-cyan-600"
             title="Rain Risk"
             badge={level.badge}
@@ -385,8 +399,8 @@ export default async function OverviewPage({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-[22px]">insights</span>
-                  <h2 className="text-lg font-bold text-slate-900">Sensor Trends ({cfg.label})</h2>
+                  <span className="material-symbols-outlined text-cyan-600 text-[22px]"><ChartNoAxesCombined/></span>
+                  <h2 className="text-lg font-bold text-slate-900"> Sensor Trends ({cfg.label})</h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Per-node averages in {cfg.bin} bins · refreshes every 30 s
@@ -418,7 +432,7 @@ export default async function OverviewPage({
             {/* TREND CARDS */}
             <div className="flex flex-col gap-4 pt-1">
               <TrendCard
-                icon="compress"
+                icon={Gauge}
                 iconClassName="bg-cyan-50 text-cyan-700"
                 title="Air Pressure Trend"
                 badge={pressureBadge.text}
@@ -432,7 +446,7 @@ export default async function OverviewPage({
               />
 
               <TrendCard
-                icon="humidity_percentage"
+                icon={Droplets}
                 iconClassName="bg-teal-50 text-teal-700"
                 title="Air Humidity Trend"
                 badge={humidityHigh ? "High Moisture" : "Normal"}
@@ -446,7 +460,7 @@ export default async function OverviewPage({
               />
 
               <TrendCard
-                icon="thermostat"
+                icon={Thermometer}
                 iconClassName="bg-amber-100 text-amber-700"
                 title="Ambient Temperature Trend"
                 badge={tChange === null ? "Collecting data" : tChange <= -1 ? "Cooling" : tChange >= 1 ? "Warming" : "Stable"}
@@ -476,7 +490,7 @@ export default async function OverviewPage({
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[18px]">water</span>
+                  <span className="material-symbols-outlined text-[18px]"><Waves/></span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Moisture Change</span>
@@ -488,7 +502,7 @@ export default async function OverviewPage({
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[18px]">crisis_alert</span>
+                  <span className="material-symbols-outlined text-[18px]"><CircleAlert/></span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Node Consensus</span>
@@ -508,7 +522,7 @@ export default async function OverviewPage({
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-[20px]">hub</span>
+                  <span className="material-symbols-outlined text-cyan-600 text-[20px]"><Network/></span>
                   <h3 className="text-base font-bold text-slate-900">Node Status Overview</h3>
                 </div>
 

@@ -4,32 +4,71 @@ import clsx from "clsx";
 import { useState } from "react";
 import AddNodeButton from "./add-node-component";
 import NodesList from "./nodes-list";
-import { SENSOR_NODES_LIST } from "@/lib/global-variables";
+import { useNodesData } from "@/hooks/use-nodes-data";
+
+type Filter = "all" | "healthy" | "warnings" | "offline";
 
 export default function NodesTable() {
-  const [filter, setFilter] = useState<"all" | "healthy" | "warnings" | "offline">("all");
+  const { data } = useNodesData();
+  const allNodes = data?.nodes ?? [];
+
+  const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const filteredNodes = SENSOR_NODES_LIST.filter((n) => {
+
+  const filteredNodes = allNodes.filter((n) => {
+    const q = search.trim().toLowerCase();
     const matchesSearch =
-      search.trim() === "" ||
-      n.name.toLowerCase().includes(search.toLowerCase()) ||
-      n.location.toLowerCase().includes(search.toLowerCase()) ||
-      n.topic.toLowerCase().includes(search.toLowerCase());
+      q === "" ||
+      n.name.toLowerCase().includes(q) ||
+      n.location.toLowerCase().includes(q) ||
+      n.topic.toLowerCase().includes(q);
 
     const matchesFilter =
       filter === "all" ||
-      (filter === "healthy" && n.alerts.level === "normal") ||
+      (filter === "healthy" && n.status === "online" && n.alerts.level === "normal") ||
       (filter === "warnings" && n.alerts.level === "warning") ||
       (filter === "offline" && n.status === "offline");
 
     return matchesSearch && matchesFilter;
   });
+
   const counts = {
-    all: SENSOR_NODES_LIST.length,
-    healthy: SENSOR_NODES_LIST.filter((n) => n.alerts.level === "normal").length,
-    warnings: SENSOR_NODES_LIST.filter((n) => n.alerts.level === "warning").length,
-    offline: SENSOR_NODES_LIST.filter((n) => n.status === "offline").length,
+    all: allNodes.length,
+    healthy: allNodes.filter((n) => n.status === "online" && n.alerts.level === "normal").length,
+    warnings: allNodes.filter((n) => n.alerts.level === "warning").length,
+    offline: allNodes.filter((n) => n.status === "offline").length,
   };
+
+  const exportCsv = () => {
+    const header = ["id", "name", "location", "topic", "status", "prediction", "temperature", "pressure", "humidity", "rain_raw", "is_raining", "last_seen"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = filteredNodes.map((n) =>
+      [
+        n.id,
+        n.name,
+        n.location,
+        n.topic,
+        n.status,
+        n.prediction,
+        n.latest?.temp,
+        n.latest?.pressure,
+        n.latest?.humidity,
+        n.latest?.rainRaw,
+        n.latest?.isRaining,
+        n.lastSeen,
+      ]
+        .map(esc)
+        .join(","),
+    );
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nodes-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
       <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-white">
@@ -92,7 +131,9 @@ export default function NodesTable() {
         <div className="flex items-center gap-2.5">
           {/* EXPORT AS CSV */}
           <button
-            className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            onClick={exportCsv}
+            disabled={filteredNodes.length === 0}
+            className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
             type="button"
           >
             <span className="material-symbols-outlined text-[16px]">file_download</span>
@@ -103,21 +144,19 @@ export default function NodesTable() {
         </div>
       </div>
 
-      <NodesList search={search} filter={filter} setFilter={setFilter} setSearch={setSearch} />
-
+      <NodesList nodes={filteredNodes} />
       <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[16px] text-emerald-600">wifi_tethering</span>
           <span>
             Showing{" "}
             <strong>
-              {filteredNodes.length} of {SENSOR_NODES_LIST.length} Active Stations
-            </strong>{" "}
-            across backyard &amp; roof mesh
+              {filteredNodes.length} of {allNodes.length} Stations
+            </strong>
           </span>
         </div>
         <div className="flex items-center gap-2 font-medium">
-          <span>Auto-refreshing via MQTT broker every 30 seconds</span>
+          <span>Auto-refreshing every 30 seconds</span>
         </div>
       </div>
     </div>

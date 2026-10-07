@@ -1,8 +1,9 @@
+import { LucideIcon } from "lucide-react";
 
 export type TimeRange = "3h" | "24h" | "7d";
 
 export type MetricCardProps = {
-  icon: string;
+  icon: LucideIcon;
   iconClassName: string;
   title: string;
   badge: string;
@@ -15,7 +16,7 @@ export type MetricCardProps = {
 };
 
 export type TrendCardProps = {
-  icon: string;
+  icon: LucideIcon;
   iconClassName: string;
   title: string;
   badge: string;

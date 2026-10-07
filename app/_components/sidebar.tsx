@@ -5,11 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import {
+  LayoutDashboard,
+  Network,
+  Table2,
+  CloudRain,
+} from "lucide-react";
+
 const navItems: NavItem[] = [
-  { label: "Overview", href: "/", icon: "dashboard" },
-  { label: "Nodes & Sensors", href: "/nodes", icon: "hub" },
-  { label: "Readings History", href: "/readings", icon: "table_chart" },
-  { label: "Rain Prediction", href: "/prediction", icon: "rainy" },
+  { label: "Overview", href: "/", icon: LayoutDashboard },
+  { label: "Nodes & Sensors", href: "/nodes", icon: Network },
+  { label: "Readings History", href: "/readings", icon: Table2 },
+  { label: "Rain Prediction", href: "/prediction", icon: CloudRain },
 ];
 
 export default function Sidebar() {
@@ -66,7 +73,7 @@ export default function Sidebar() {
           <nav className="flex flex-col gap-1 px-3">
             {navItems.map((item) => {
               const active = pathname === item.href;
-
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
@@ -77,7 +84,7 @@ export default function Sidebar() {
                     active ? "bg-cyan-50 text-cyan-800 font-semibold border-l-4 border-cyan-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[20px] ${active ? "text-cyan-700" : ""}`}>{item.icon}</span>
+                  <span className={`material-symbols-outlined text-[20px] ${active ? "text-cyan-700" : ""}`}>{<Icon size={20}/>}</span>
 
                   <span className="text-sm">{item.label}</span>
                 </Link>
