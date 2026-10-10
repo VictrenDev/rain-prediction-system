@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveSettings } from "@/app/actions";
+import { Bell } from "lucide-react";
 
 type Props = {
   initial: {
@@ -102,7 +103,7 @@ export default function ThresholdsPanel({ initial, currentDrop, currentHumidity 
     <div id="thresholds" className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-4 scroll-mt-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-cyan-600 text-[20px]">notifications_active</span>
+          <span className=" text-cyan-600 text-[20px]"><Bell/></span>
           <h3 className="text-base font-bold text-slate-900">Thresholds & Alerts</h3>
         </div>
         <span className="text-xs font-semibold text-cyan-700">Live Rules</span>

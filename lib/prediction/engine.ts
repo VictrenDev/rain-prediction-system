@@ -45,7 +45,7 @@ export type Assessment = {
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 
-export const ONLINE_WINDOW_MS = 10 * MIN; // node counts as offline after 10 min of silence
+export const ONLINE_WINDOW_MS = 20 * MIN; // node counts as offline after 20 min of silence
 export const FLAG_SCORE = 70;
 export const MODERATE_SCORE = 40;
 
@@ -55,13 +55,7 @@ function mean(xs: (number | null)[]): number | null {
 }
 
 /** Least-squares slope (units per hour) over the last `windowMs`. */
-function slopePerHour(
-  points: Point[],
-  windowMs: number,
-  now: number,
-  minPoints: number,
-  minSpanMs: number
-): number | null {
+function slopePerHour(points: Point[], windowMs: number, now: number, minPoints: number, minSpanMs: number): number | null {
   const pts = points.filter((p) => p.t >= now - windowMs);
   if (pts.length < minPoints) return null;
   if (pts[pts.length - 1].t - pts[0].t < minSpanMs) return null;
@@ -127,14 +121,9 @@ export function assess(nodes: NodeInput[], th: Thresholds, now = Date.now()): As
   const raining = results.filter((r) => r.raining).length;
   const flagged = assessed.filter((r) => (r.score as number) >= FLAG_SCORE).length;
 
-  const required = th.multiNodeCheck
-    ? Math.max(1, Math.min(th.minNodesAgree, assessed.length))
-    : 1;
+  const required = th.multiNodeCheck ? Math.max(1, Math.min(th.minNodesAgree, assessed.length)) : 1;
 
-  const score =
-    assessed.length > 0
-      ? Math.round(mean(assessed.map((r) => r.score)) as number)
-      : null;
+  const score = assessed.length > 0 ? Math.round(mean(assessed.map((r) => r.score)) as number) : null;
 
   let level: RiskLevel;
   if (raining > 0) level = "raining";

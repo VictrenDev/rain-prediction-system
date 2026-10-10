@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, RadioTower, X } from "lucide-react";
 
 export default function AddNodeButton() {
   const [showAddNode, setShowAddNode] = useState(false);
@@ -12,10 +13,10 @@ export default function AddNodeButton() {
         type="button"
         onClick={() => setShowAddNode(true)}
       >
-        <span className="material-symbols-outlined text-[18px]">add</span>
-
+        <Plus className="h-[18px] w-[18px]" />
         <span>Add Node</span>
       </button>
+
       {showAddNode && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
@@ -31,7 +32,7 @@ export default function AddNodeButton() {
               <div>
                 <div className="flex items-center gap-2">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
-                    <span className="material-symbols-outlined text-[20px]">sensors</span>
+                    <RadioTower className="h-5 w-5" />
                   </div>
 
                   <div>
@@ -47,7 +48,7 @@ export default function AddNodeButton() {
                 className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Close"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -124,7 +125,6 @@ export default function AddNodeButton() {
                   </div>
                 </section>
 
-
                 {/* Configuration */}
                 <section className="border-t border-slate-100 pt-5">
                   <div className="mb-3">
@@ -193,6 +193,6 @@ export default function AddNodeButton() {
           </div>
         </div>
       )}
-   </>
+    </>
   );
 }

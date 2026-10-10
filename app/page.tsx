@@ -1,25 +1,7 @@
 import Link from "next/link";
 import { MetricCardProps, TrendCardProps } from "@/lib/types/overview";
-import {
-  CHART_RANGES,
-  getLatestPerNode,
-  getSeries,
-  getSettings,
-  getTempRange24h,
-  parseChartRange,
-} from "@/lib/db/overview";
-import {
-  CloudRain,
-  CloudLightning,
-  Gauge,
-  Droplets,
-  Thermometer,
-  TrendingDown,
-  Waves,
-  CircleAlert,
-  Network,
-  ChartNoAxesCombined,
-} from "lucide-react";
+import { CHART_RANGES, getLatestPerNode, getSeries, getSettings, getTempRange24h, parseChartRange } from "@/lib/db/overview";
+import { CloudRain, CloudLightning, Gauge, Droplets, Thermometer, TrendingDown, Waves, CircleAlert, Network, ChartNoAxesCombined } from "lucide-react";
 import { getNodes } from "@/lib/db/queries";
 import { ONLINE_WINDOW_MS, assess, type NodeInput, type RiskLevel } from "@/lib/prediction/engine";
 import AlertBanner from "./_components/alert-banner";
@@ -67,10 +49,7 @@ function startEnd(series: ChartSeries[]) {
   };
 }
 
-const LEVELS: Record<
-  RiskLevel,
-  { label: string; badge: string; badgeClass: string }
-> = {
+const LEVELS: Record<RiskLevel, { label: string; badge: string; badgeClass: string }> = {
   collecting: { label: "Collecting data", badge: "Warming up", badgeClass: "bg-slate-100 text-slate-700" },
   low: { label: "Low Risk", badge: "No rain expected", badgeClass: "bg-teal-50 border border-teal-200 text-teal-800" },
   moderate: { label: "Moderate Risk", badge: "Watch", badgeClass: "bg-amber-50 border border-amber-200 text-amber-800" },
@@ -192,11 +171,7 @@ function NodeStatusCard({
 
 /* ---------- page ---------- */
 
-export default async function OverviewPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ range?: string }>;
-}) {
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const sp = await searchParams;
   const range = parseChartRange(sp.range);
   const cfg = CHART_RANGES[range];
@@ -211,7 +186,7 @@ export default async function OverviewPage({
     range === "3h" ? Promise.resolve(null) : getSeries(range, now),
   ]);
   const chartData = rangeSeries ?? predSeries;
-
+console.log(nodeRows, latest, settings, tempRange, predSeries)
   /* nodes */
   const latestById = new Map(latest.map((r) => [r.nodeId, r]));
   const nodeViews = nodeRows.map((n, i) => {
@@ -241,9 +216,7 @@ export default async function OverviewPage({
 
   /* charts */
   const toSeries = (metric: "pressure" | "humidity" | "temperature"): ChartSeries[] =>
-    nodeViews
-      .map((n) => ({ name: n.name, color: n.color, points: chartData[n.id]?.[metric] ?? [] }))
-      .filter((s) => s.points.length > 0);
+    nodeViews.map((n) => ({ name: n.name, color: n.color, points: chartData[n.id]?.[metric] ?? [] })).filter((s) => s.points.length > 0);
 
   const pressureSeries = toSeries("pressure");
   const humiditySeries = toSeries("humidity");
@@ -300,27 +273,21 @@ export default async function OverviewPage({
         {/* METRIC CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <MetricCard
-            icon= {Gauge}
+            icon={Gauge}
             iconClassName="text-cyan-600"
             title="Air Pressure"
             badge={pressureBadge.text}
             badgeClassName={pressureBadge.cls}
             value={f(pressureNow)}
             unit="hPa"
-            description={
-              drop === null
-                ? "Needs ~45 min of history for a trend"
-                : `${drop >= 0 ? "↓" : "↑"} ${f(Math.abs(drop))} hPa per 3 hours`
-            }
+            description={drop === null ? "Needs ~45 min of history for a trend" : `${drop >= 0 ? "↓" : "↑"} ${f(Math.abs(drop))} hPa per 3 hours`}
             descriptionClassName={pressureTriggered ? "text-amber-700" : "text-slate-600"}
             footer={
               <>
                 <span>
                   Alert at: <strong className="text-slate-800">≥ {f(settings.pressureDropHpa)} hPa / 3 h</strong>
                 </span>
-                <span className={pressureTriggered ? "text-amber-700 font-bold" : "text-slate-500 font-medium"}>
-                  {pressureTriggered ? "Triggered" : "Normal"}
-                </span>
+                <span className={pressureTriggered ? "text-amber-700 font-bold" : "text-slate-500 font-medium"}>{pressureTriggered ? "Triggered" : "Normal"}</span>
               </>
             }
           />
@@ -340,9 +307,7 @@ export default async function OverviewPage({
                   Dew point: <strong className="text-slate-800">{dew === null ? "—" : `${f(dew)}°C`}</strong>
                 </span>
                 {dew !== null && tempNow !== null && (
-                  <span className={tempNow - dew < 2 ? "text-teal-700 font-medium" : "text-slate-500 font-medium"}>
-                    {tempNow - dew < 2 ? "Condensing" : "Not saturated"}
-                  </span>
+                  <span className={tempNow - dew < 2 ? "text-teal-700 font-medium" : "text-slate-500 font-medium"}>{tempNow - dew < 2 ? "Condensing" : "Not saturated"}</span>
                 )}
               </>
             }
@@ -359,10 +324,7 @@ export default async function OverviewPage({
             descriptionClassName="text-slate-600"
             footer={
               <span>
-                24h Range:{" "}
-                <strong className="text-slate-800">
-                  {tempRange.lo === null ? "—" : `${f(tempRange.lo)}°C – ${f(tempRange.hi)}°C`}
-                </strong>
+                24h Range: <strong className="text-slate-800">{tempRange.lo === null ? "—" : `${f(tempRange.lo)}°C – ${f(tempRange.hi)}°C`}</strong>
               </span>
             }
           />
@@ -375,18 +337,11 @@ export default async function OverviewPage({
             badgeClassName={level.badgeClass}
             value={level.label}
             unit={result.score !== null ? `(${result.score}/100)` : undefined}
-            description={
-              result.nodesAssessed > 0
-                ? `${result.nodesFlagged} of ${result.nodesAssessed} nodes signal rain`
-                : "Waiting for enough pressure history"
-            }
+            description={result.nodesAssessed > 0 ? `${result.nodesFlagged} of ${result.nodesAssessed} nodes signal rain` : "Waiting for enough pressure history"}
             descriptionClassName="text-slate-600"
             footer={
               <span>
-                Rain sensor:{" "}
-                <strong className="text-slate-800">
-                  {rainingNodes > 0 ? `Wet (${rainingNodes}/${result.nodesOnline} nodes)` : "Dry"}
-                </strong>
+                Rain sensor: <strong className="text-slate-800">{rainingNodes > 0 ? `Wet (${rainingNodes}/${result.nodesOnline} nodes)` : "Dry"}</strong>
               </span>
             }
           />
@@ -399,12 +354,12 @@ export default async function OverviewPage({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-[22px]"><ChartNoAxesCombined/></span>
+                  <span className="material-symbols-outlined text-cyan-600 text-[22px]">
+                    <ChartNoAxesCombined />
+                  </span>
                   <h2 className="text-lg font-bold text-slate-900"> Sensor Trends ({cfg.label})</h2>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Per-node averages in {cfg.bin} bins · refreshes every 30 s
-                </p>
+                <p className="text-xs text-slate-500 mt-0.5">Per-node averages in {cfg.bin} bins · refreshes every 30 s</p>
               </div>
 
               <div className="flex items-center bg-slate-100 border border-slate-200 p-0.5 rounded-lg shrink-0 text-xs self-start sm:self-center">
@@ -478,38 +433,36 @@ export default async function OverviewPage({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-100">
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[18px]">trending_down</span>
+                  <span className=" text-[18px]"><TrendingDown/></span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Pressure Tendency</span>
-                  <strong className="text-slate-800 font-bold text-sm">
-                    {drop === null ? "Collecting data" : `${drop >= 0 ? "−" : "+"}${f(Math.abs(drop))} hPa / 3 h`}
-                  </strong>
+                  <strong className="text-slate-800 font-bold text-sm">{drop === null ? "Collecting data" : `${drop >= 0 ? "−" : "+"}${f(Math.abs(drop))} hPa / 3 h`}</strong>
                 </div>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[18px]"><Waves/></span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    <Waves />
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Moisture Change</span>
-                  <strong className="text-slate-800 font-bold text-sm">
-                    {hRise === null ? "Collecting data" : `${hRise >= 0 ? "+" : "−"}${f(Math.abs(hRise))}% in 1 hour`}
-                  </strong>
+                  <strong className="text-slate-800 font-bold text-sm">{hRise === null ? "Collecting data" : `${hRise >= 0 ? "+" : "−"}${f(Math.abs(hRise))}% in 1 hour`}</strong>
                 </div>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[18px]"><CircleAlert/></span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    <CircleAlert />
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Node Consensus</span>
                   <strong className="text-slate-800 font-bold text-sm">
-                    {result.nodesAssessed === 0
-                      ? "Collecting data"
-                      : `${result.nodesFlagged} of ${result.nodesAssessed} Nodes Agree`}
+                    {result.nodesAssessed === 0 ? "Collecting data" : `${result.nodesFlagged} of ${result.nodesAssessed} Nodes Agree`}
                   </strong>
                 </div>
               </div>
@@ -522,15 +475,15 @@ export default async function OverviewPage({
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col gap-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-[20px]"><Network/></span>
+                  <span className="material-symbols-outlined text-cyan-600 text-[20px]">
+                    <Network />
+                  </span>
                   <h3 className="text-base font-bold text-slate-900">Node Status Overview</h3>
                 </div>
 
                 <span
                   className={`text-xs font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
-                    nodeViews.length > 0 && onlineCount === nodeViews.length
-                      ? "bg-teal-50 text-teal-700 border-teal-200"
-                      : "bg-amber-50 text-amber-800 border-amber-200"
+                    nodeViews.length > 0 && onlineCount === nodeViews.length ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-amber-50 text-amber-800 border-amber-200"
                   }`}
                 >
                   {onlineCount} of {nodeViews.length} Connected
@@ -551,20 +504,12 @@ export default async function OverviewPage({
                     humidity={n.latest?.humidity != null ? `${f(n.latest.humidity)}%` : "—"}
                   />
                 ))}
-                {nodeViews.length === 0 && (
-                  <p className="text-xs text-slate-400 py-4 text-center">
-                    No nodes yet. Start the MQTT worker and power a node.
-                  </p>
-                )}
+                {nodeViews.length === 0 && <p className="text-xs text-slate-400 py-4 text-center">No nodes yet. Start the MQTT worker and power a node.</p>}
               </div>
             </div>
 
             {/* THRESHOLDS */}
-            <ThresholdsPanel
-              initial={settings}
-              currentDrop={drop}
-              currentHumidity={humidityNow}
-            />
+            <ThresholdsPanel initial={settings} currentDrop={drop} currentHumidity={humidityNow} />
           </div>
         </div>
       </div>
