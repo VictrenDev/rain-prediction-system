@@ -252,8 +252,7 @@ console.log(nodeRows, latest, settings, tempRange, predSeries)
   const bannerMessage =
     result.level === "raining"
       ? `Rain sensor is wet on ${rainingNodes} of ${result.nodesOnline} online node${result.nodesOnline === 1 ? "" : "s"}.`
-      : `Pressure is falling ${f(drop)} hPa per 3 hours with humidity at ${f(humidityNow, 0)}%. ${result.nodesFlagged} of ${result.nodesAssessed} node${result.nodesAssessed === 1 ? "" : "s"} signal rain.`;
-
+      : `Pressure is falling ${f(drop)} hPa per 3 hours with humidity at ${f(humidityNow, 0)}%. ${result.nodesFlagged} of ${result.nodesAssessed} node${result.nodesAssessed === 1 ? "" : "s"} signal rain.${result.eta ? ` Estimated rain in ${result.eta}.` : ""}`;
   return (
     <main className="w-full bg-slate-50 min-h-screen">
       <AutoRefresh intervalMs={30000} />
@@ -337,7 +336,9 @@ console.log(nodeRows, latest, settings, tempRange, predSeries)
             badgeClassName={level.badgeClass}
             value={level.label}
             unit={result.score !== null ? `(${result.score}/100)` : undefined}
-            description={result.nodesAssessed > 0 ? `${result.nodesFlagged} of ${result.nodesAssessed} nodes signal rain` : "Waiting for enough pressure history"}
+            description={
+              result.nodesAssessed > 0 ? `${result.nodesFlagged} of ${result.nodesAssessed} nodes signal rain${result.eta ? ` · ETA ${result.eta}` : ""}` : "Waiting for enough pressure history"
+            }
             descriptionClassName="text-slate-600"
             footer={
               <span>

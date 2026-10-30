@@ -31,6 +31,7 @@ export type Assessment = {
   level: RiskLevel;
   score: number | null;
   alert: boolean;
+  eta: string | null; // indicative time-to-rain, only when level is "high"
   nodesOnline: number;
   nodesAssessed: number;
   nodesFlagged: number;
@@ -52,6 +53,19 @@ export const MODERATE_SCORE = 40;
 function mean(xs: (number | null)[]): number | null {
   const v = xs.filter((x): x is number => x !== null);
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/**
+ * Indicative time-to-rain. Rule-based: the faster pressure falls relative to
+ * the alert threshold, the sooner rain is expected. Bands are placeholders
+ * and should be calibrated against logged rain events.
+ */
+function estimateEta(level: RiskLevel, drop3h: number | null, th: Thresholds): string | null {
+  if (level !== "high" || drop3h === null || th.pressureDropHpa <= 0) return null;
+  const ratio = drop3h / th.pressureDropHpa;
+  if (ratio >= 2) return "1–3 hours";
+  if (ratio >= 1.5) return "2–4 hours";
+  return "3–6 hours";
 }
 
 /** Least-squares slope (units per hour) over the last `windowMs`. */
@@ -132,16 +146,19 @@ export function assess(nodes: NodeInput[], th: Thresholds, now = Date.now()): As
   else if ((score ?? 0) >= MODERATE_SCORE || flagged > 0) level = "moderate";
   else level = "low";
 
+  const pressureDrop3h = mean(results.map((r) => r.pressureDrop3h));
+
   return {
     level,
     score,
     alert: level === "high" || level === "raining",
+    eta: estimateEta(level, pressureDrop3h, th),
     nodesOnline: online.length,
     nodesAssessed: assessed.length,
     nodesFlagged: flagged,
     nodesRaining: raining,
     nodesRequired: required,
-    pressureDrop3h: mean(results.map((r) => r.pressureDrop3h)),
+    pressureDrop3h,
     humidityRise1h: mean(results.map((r) => r.humidityRise1h)),
     tempChange3h: mean(results.map((r) => r.tempChange3h)),
     nodes: results,

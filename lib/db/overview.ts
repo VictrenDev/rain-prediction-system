@@ -5,10 +5,7 @@ import type { Point, Thresholds } from "../prediction/engine";
 
 export type ChartRange = "3h" | "24h" | "7d";
 
-export const CHART_RANGES: Record<
-  ChartRange,
-  { ms: number; bin: string; binMs: number; label: string }
-> = {
+export const CHART_RANGES: Record<ChartRange, { ms: number; bin: string; binMs: number; label: string }> = {
   "3h": { ms: 3 * 3600e3, bin: "3 minutes", binMs: 3 * 60e3, label: "Last 3 Hours" },
   "24h": { ms: 24 * 3600e3, bin: "15 minutes", binMs: 15 * 60e3, label: "Last 24 Hours" },
   "7d": { ms: 7 * 24 * 3600e3, bin: "1 hour", binMs: 3600e3, label: "Last 7 Days" },
@@ -26,11 +23,7 @@ export const DEFAULT_SETTINGS: Thresholds = {
 };
 
 export async function getSettings(): Promise<Thresholds> {
-  const [row] = await db
-    .select()
-    .from(settings)
-    .where(eq(settings.id, "default"))
-    .limit(1);
+  const [row] = await db.select().from(settings).where(eq(settings.id, "default")).limit(1);
   if (!row) return DEFAULT_SETTINGS;
   return {
     pressureDropHpa: row.pressureDropHpa,
@@ -78,10 +71,7 @@ type RawRow = {
 };
 
 /** Per-node averages in fixed time bins, so chart size stays bounded. */
-export async function getSeries(
-  range: ChartRange,
-  now: number
-): Promise<Record<string, NodeSeries>> {
+export async function getSeries(range: ChartRange, now: number): Promise<Record<string, NodeSeries>> {
   const cfg = CHART_RANGES[range];
   const since = new Date(now - cfg.ms).toISOString();
 
