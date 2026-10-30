@@ -4,19 +4,13 @@ import { NavItem } from "@/lib/types/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-
-import {
-  LayoutDashboard,
-  Network,
-  Table2,
-  CloudRain,
-} from "lucide-react";
+import { LayoutDashboard, Network, Table2, BellDotIcon } from "lucide-react";
 
 const navItems: NavItem[] = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
   { label: "Nodes & Sensors", href: "/nodes", icon: Network },
   { label: "Readings History", href: "/readings", icon: Table2 },
-  { label: "Rain Prediction", href: "/prediction", icon: CloudRain },
+  { label: "Alerts", href: "/alerts", icon: BellDotIcon },
 ];
 
 export default function Sidebar() {

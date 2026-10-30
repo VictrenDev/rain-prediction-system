@@ -8,6 +8,7 @@ import AlertBanner from "./_components/alert-banner";
 import AutoRefresh from "./_components/auto-refresh";
 import ThresholdsPanel from "./_components/thresholds-panel";
 import TrendChart, { type ChartSeries } from "./_components/trend-chart";
+import { getNow } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -175,7 +176,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const range = parseChartRange(sp.range);
   const cfg = CHART_RANGES[range];
-  const now = Date.now();
+  const now = getNow();
 
   const [nodeRows, latest, settings, tempRange, predSeries, rangeSeries] = await Promise.all([
     getNodes(),
